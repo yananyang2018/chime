@@ -1,5 +1,5 @@
-import altair as alt
-import streamlit as st
+import altair as alt  # type: ignore
+import streamlit as st  # type: ignore
 
 from penn_chime.defaults import RateLos
 from penn_chime.models import Parameters
@@ -192,7 +192,6 @@ if st.checkbox("Show more info about this tool"):
         r_t=p.r_t,
         inputs=DEFAULTS,
         notes=notes
-
     )
 
 # PRESENTATION

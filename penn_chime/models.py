@@ -1,9 +1,9 @@
 from collections import namedtuple
 from typing import Generator, Tuple
 
-import numpy as np
-import pandas as pd
-import streamlit as st
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
+import streamlit as st  # type: ignore
 
 from .defaults import RateLos
 
@@ -18,10 +18,11 @@ class Parameters:
         market_share: float,
         relative_contact_rate: float,
         susceptible: int,
-
         hospitalized: RateLos,
         icu: RateLos,
         ventilated: RateLos,
+        recovery_days: float = 14.0,
+        recovered: float = 0.0
     ):
         self.current_hospitalized = current_hospitalized
         self.doubling_time = doubling_time
@@ -30,7 +31,6 @@ class Parameters:
         self.relative_contact_rate = relative_contact_rate
         self.susceptible = susceptible
         self._n_days = 0
-
         self.hospitalized = hospitalized
         self.icu = icu
         self.ventilated = ventilated
@@ -54,14 +54,12 @@ class Parameters:
         else:
             self.detection_probability = None
 
-        # TODO missing initial recovered value
-        self.recovered = 0.0
+        self.recovered = recovered
 
         self.intrinsic_growth_rate = intrinsic_growth_rate = \
             2.0 ** (1.0 / doubling_time) - 1.0 if doubling_time > 0.0 else 0.0
 
-        # TODO make this configurable, or more nuanced
-        self.recovery_days = recovery_days = 14.0
+        self.recovery_days = recovery_days
 
         self.gamma = gamma = 1.0 / recovery_days
 
@@ -79,8 +77,7 @@ class Parameters:
         self.r_naught = (intrinsic_growth_rate + gamma)  / gamma
 
         # doubling time after distancing
-        # TODO constrain values np.log2(...) > 0.0
-        self.doubling_time_t = 1.0 / np.log2(beta * susceptible - gamma + 1)
+        self.doubling_time_t = 1.0 / max(np.log2(beta * susceptible - gamma + 1), 1.e-7)
 
         self.beta_decay = 0.0
 
@@ -91,6 +88,7 @@ class Parameters:
 
     @n_days.setter
     def n_days(self, n_days: int):
+        """More than a setter, this is where the model is."""
         self._n_days = n_days
 
         # s := Susceptible, able to be infected
@@ -120,20 +118,15 @@ def sir(
     beta: float, gamma: float, n: float
 ) -> Tuple[float, float, float]:
     """The SIR model, one time step."""
-    s_n = (-beta * s * i) + s
-    i_n = (beta * s * i - gamma * i) + i
-    r_n = gamma * i + r
-    if s_n < 0.0:
-        s_n = 0.0
-    if i_n < 0.0:
-        i_n = 0.0
-    if r_n < 0.0:
-        r_n = 0.0
+    s_n = max((-beta * s * i) + s, 0.0)
+    i_n = max((beta * s * i - gamma * i) + i, 0.0)
+    r_n = max(gamma * i + r, 0.0)
 
     scale = n / (s_n + i_n + r_n)
     return s_n * scale, i_n * scale, r_n * scale
 
 
+@st.cache
 def gen_sir(
     s: float, i: float, r: float,
     beta: float, gamma: float, n_days: int, beta_decay: float = 0.0
@@ -173,13 +166,10 @@ def sim_sir(
 
 
 @st.cache
-def sim_sir_df(
-    s: float, i: float, r: float,
-    beta: float, gamma: float, n_days: int, beta_decay: float = 0.0
-) -> pd.DataFrame:
+def sim_sir_df(p: Parameters) -> pd.DataFrame:
     """Simulate the SIR model forward in time."""
     return pd.DataFrame(
-        data=gen_sir(s, i, r, beta, gamma, n_days, beta_decay),
+        data=gen_sir(p.susceptible, p.infected, r.recovered, p.beta, p.gamma, p.n_days, p.beta_decay),
         columns=("S", "I", "R"),
     )
 

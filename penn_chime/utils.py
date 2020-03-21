@@ -1,9 +1,10 @@
-import numpy as np
-import pandas as pd
-import streamlit as st
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
+import streamlit as st  # type: ignore
 
 @st.cache
 def build_admissions_df(n_days, hosp, icu, vent) -> pd.DataFrame:
+    """Dataframe of admissions for hosp, icu, and vent."""
     days = np.array(range(0, n_days + 1))
     data_dict = dict(zip(["day", "hosp", "icu", "vent"], [days, hosp, icu, vent]))
     projection = pd.DataFrame.from_dict(data_dict)
