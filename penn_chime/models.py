@@ -22,7 +22,8 @@ class Parameters:
         icu: RateLos,
         ventilated: RateLos,
         recovery_days: float = 14.0,
-        recovered: float = 0.0
+        recovered: float = 0.0,
+        beta_decay: float = 0.0
     ):
         self.current_hospitalized = current_hospitalized
         self.doubling_time = doubling_time
@@ -79,7 +80,7 @@ class Parameters:
         # doubling time after distancing
         self.doubling_time_t = 1.0 / max(np.log2(beta * susceptible - gamma + 1), 1.e-7)
 
-        self.beta_decay = 0.0
+        self.beta_decay = beta_decay
 
 
     @property
